@@ -31,47 +31,11 @@ const allowedPhoneNumbers = process.env.ALLOWED_PHONE_NUMBERS
 // System prompt para definir o comportamento do bot
 const systemPrompt = process.env.SYSTEM_PROMPT;
 
-// Função para gerar resposta usando Gemini
-async function generateResponse(message) {
-    try {
-        // Cria um modelo do Gemini AI
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+// Map para armazenar nomes dos usuários
+const userNames = new Map();
 
-        // Cria o chat com o system prompt
-        const chat = model.startChat({
-            history: [
-                {
-                    role: "user",
-                    parts: "Por favor, confirme que entendeu suas instruções respondendo apenas 'Entendido'.",
-                },
-                {
-                    role: "model",
-                    parts: "Entendido",
-                },
-            ],
-            generationConfig: {
-                maxOutputTokens: 1000,
-            },
-        });
-
-        // Adiciona o system prompt
-        await chat.sendMessage(systemPrompt);
-
-        // Gera uma resposta baseada na mensagem recebida
-        const result = await chat.sendMessage(message);
-        const response = await result.response;
-        
-        // Retorna a resposta
-        return response.text();
-    } catch (error) {
-        // Caso ocorra um erro, retorna uma mensagem de erro
-        console.error('Erro ao gerar resposta:', error);
-        if (error.message.includes('429') || error.message.includes('quota')) {
-            return "Desculpe, o limite de mensagens foi atingido. Por favor, tente novamente mais tarde.";
-        }
-        return "Desculpe, não consegui processar sua mensagem no momento.";
-    }
-}
+// Map para armazenar histórico de conversas por usuário
+const conversationHistory = new Map();
 
 // Variável para controlar o tempo da última mensagem
 let lastMessageTime = 0;
@@ -88,6 +52,74 @@ client.on('qr', (qr) => {
 client.on('ready', () => {
     console.log('Cliente WhatsApp está pronto!');
 });
+
+// Função para gerar resposta usando Gemini
+async function generateResponse(message, userName, userId) {
+    try {
+        // Cria um modelo do Gemini AI
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        // Obtém ou inicializa o histórico do usuário
+        if (!conversationHistory.has(userId)) {
+            conversationHistory.set(userId, [
+                {
+                    role: "user",
+                    parts: "Por favor, confirme que entendeu suas instruções respondendo apenas 'Entendido'.",
+                },
+                {
+                    role: "model",
+                    parts: "Entendido",
+                },
+                {
+                    role: "user",
+                    parts: `O Nome do Paciente é ${userName}`,
+                },
+            ]);
+        }
+
+        // Cria o chat com o histórico existente
+        const chat = model.startChat({
+            history: conversationHistory.get(userId),
+            generationConfig: {
+                maxOutputTokens: 1000,
+            },
+        });
+
+        // Adiciona o system prompt apenas se for a primeira mensagem
+        if (conversationHistory.get(userId).length <= 3) {
+            await chat.sendMessage(systemPrompt);
+            const initialResponse = await chat.getHistory();
+            conversationHistory.set(userId, initialResponse);
+        }
+
+        // Gera uma resposta baseada na mensagem recebida
+        const result = await chat.sendMessage(message);
+        const response = await result.response;
+        
+        // Atualiza o histórico com a nova interação
+        const updatedHistory = await chat.getHistory();
+        conversationHistory.set(userId, updatedHistory);
+        
+        // Limita o histórico para evitar tokens excessivos (mantém últimas 10 mensagens)
+        if (updatedHistory.length > 20) {
+            const trimmedHistory = [
+                ...updatedHistory.slice(0, 3), // Mantém as 3 primeiras mensagens (setup inicial)
+                ...updatedHistory.slice(-17) // Mantém as últimas 17 mensagens
+            ];
+            conversationHistory.set(userId, trimmedHistory);
+        }
+        
+        // Retorna a resposta
+        return response.text();
+    } catch (error) {
+        // Caso ocorra um erro, retorna uma mensagem de erro
+        console.error('Erro ao gerar resposta:', error);
+        if (error.message.includes('429') || error.message.includes('quota')) {
+            return "Desculpe, o limite de mensagens foi atingido. Por favor, tente novamente mais tarde.";
+        }
+        return "Desculpe, não consegui processar sua mensagem no momento.";
+    }
+}
 
 // Evento para processar mensagens recebidas
 client.on('message', async (message) => {
@@ -114,10 +146,19 @@ client.on('message', async (message) => {
         }
         lastMessageTime = now;
 
+        // Captura o nome do usuário se for a primeira mensagem
+        if (!userNames.has(message.from)) {
+            const contact = await message.getContact();
+            const userName = contact.pushname || 'Usuário';
+            userNames.set(message.from, userName);
+            console.log(`Novo usuário registrado: ${userName}`);
+        }
+
         console.log(`Mensagem recebida de chat individual permitido: ${message.body}`);
         
         // Gera resposta usando Gemini
-        const response = await generateResponse(message.body);
+        const userName = userNames.get(message.from);
+        const response = await generateResponse(message.body, userName, message.from);
         
         // Envia a resposta usando sendMessage ao invés de reply
         await client.sendMessage(message.from, response);

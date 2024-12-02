@@ -8,6 +8,8 @@ Bot para WhatsApp que utiliza a API do Google Gemini para gerar respostas inteli
 - Respostas geradas pela IA Gemini da Google
 - Controle de acesso por números de telefone permitidos
 - Personalização do comportamento do bot através de variáveis de ambiente
+- Histórico de conversas persistente por usuário
+- Gerenciamento automático de contexto das conversas
 
 ## Pré-requisitos
 
@@ -54,7 +56,15 @@ node index.js
    - Vá em Menu > WhatsApp Web
    - Escaneie o QR Code
 
-3. Após a autenticação, o bot estará ativo e responderá às mensagens dos números permitidos.
+3. Após a autenticação, o bot estará ativo e:
+   - Manterá o contexto das conversas anteriores
+   - Responderá de forma personalizada usando o nome do usuário
+   - Processará as mensagens de forma inteligente usando IA
+
+4. O bot mantém um histórico das últimas 20 interações por usuário para:
+   - Manter contexto relevante da conversa
+   - Personalizar respostas com base no histórico
+   - Otimizar o uso de tokens da API
 
 ## Segurança
 
