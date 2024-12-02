@@ -37,9 +37,35 @@ const userNames = new Map();
 // Map para armazenar histórico de conversas por usuário
 const conversationHistory = new Map();
 
+// Map para armazenar tempos de cooldown por usuário
+const userCooldowns = new Map();
+
 // Variável para controlar o tempo da última mensagem
 let lastMessageTime = 0;
 const MIN_TIME_BETWEEN_MESSAGES = 2000; // 2 segundos
+
+// Função para verificar e definir cooldown
+function handleCooldown(response, userId) {
+    if (response.includes("Vou repassar para o doutor Vinícius")) {
+        const cooldownTime = Date.now() + (60 * 60 * 1000); // 1 hora em milissegundos
+        userCooldowns.set(userId, cooldownTime);
+        return true;
+    }
+    return false;
+}
+
+// Função para verificar se usuário está em cooldown
+function isUserInCooldown(userId) {
+    const cooldownTime = userCooldowns.get(userId);
+    if (!cooldownTime) return false;
+    
+    if (Date.now() < cooldownTime) {
+        return true;
+    } else {
+        userCooldowns.delete(userId);
+        return false;
+    }
+}
 
 // Evento quando o QR code é gerado
 client.on('qr', (qr) => {
@@ -124,17 +150,27 @@ async function generateResponse(message, userName, userId) {
 // Evento para processar mensagens recebidas
 client.on('message', async (message) => {
     try {
-        // Ignora mensagens do proprio bot
-        // if (message.fromMe) return;
+        // Get chat information
+        const chat = await message.getChat();
+        
+        // Registra mensagem recebida e detalhes do chat
+        // console.log('\n=== Message and Chat Details ===');
+        // console.log('Chat Object:', JSON.stringify(chat, null, 2));
+        // console.log('Message Object:', JSON.stringify(message, null, 2));
+        // console.log('================================\n');
 
         // Verifica se a mensagem é de um chat individual
-        const chat = await message.getChat();
-
         console.log('Mensagem recebida de:', message.from);
         
         // Ignora qualquer chat que não seja individual ou não esteja na lista de permitidos
         if (chat.id.server !== 'c.us' || !allowedPhoneNumbers.includes(message.from)) {
             console.log('Mensagem ignorada: não é um chat individual permitido');
+            return;
+        }
+
+        // Verifica se o usuário está em cooldown
+        if (isUserInCooldown(message.from)) {
+            console.log('Usuário em cooldown, ignorando mensagem');
             return;
         }
 
@@ -160,8 +196,15 @@ client.on('message', async (message) => {
         const userName = userNames.get(message.from);
         const response = await generateResponse(message.body, userName, message.from);
         
+        // Verifica se a resposta deve ativar o cooldown
+        const shouldCooldown = handleCooldown(response, message.from);
+        
         // Envia a resposta usando sendMessage ao invés de reply
         await client.sendMessage(message.from, response);
+        
+        if (shouldCooldown) {
+            console.log(`Cooldown ativado para usuário ${message.from}`);
+        }
     } catch (error) {
         console.error('Erro ao processar mensagem:', error);
         await client.sendMessage(message.from, 'Desculpe, ocorreu um erro ao processar sua mensagem.');
