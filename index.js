@@ -169,6 +169,8 @@ client.on('message', async (message) => {
     try {
         // Get chat information
         const chat = await message.getChat();
+
+        
         
         // Registra mensagem recebida e detalhes do chat
         // console.log('\n=== Message and Chat Details ===');
@@ -198,6 +200,12 @@ client.on('message', async (message) => {
             await new Promise(resolve => setTimeout(resolve, MIN_TIME_BETWEEN_MESSAGES));
         }
         lastMessageTime = now;
+
+        // Verifica se a mensagem é de audio, imagem, or video
+        if (message.type === 'audio' || message.type === 'image' || message.type === 'video' || message.type === 'ptt') {
+            await message.reply("Não consigo, neste momento, ouvir ou ver o arquivo. Poderia me enviar uma mensagem de texto, por gentileza!");
+            return;
+        }
 
         // Captura o nome do usuário se for a primeira mensagem
         if (!userNames.has(message.from)) {

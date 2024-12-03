@@ -17,6 +17,7 @@ Bot para WhatsApp que utiliza a API do Google Gemini para gerar respostas inteli
 - Limite de 20 mensagens no histórico por usuário para otimização
 - Tratamento de erros e mensagens de fallback
 - Suporte a múltiplos gatilhos de cooldown personalizáveis
+- Tratamento automático de mensagens de mídia (áudio, imagem e vídeo)
 
 ## Pré-requisitos
 
@@ -99,6 +100,7 @@ node index.js
 - Período de cooldown de 1 hora após certas respostas específicas
 - Limite de 20 mensagens no histórico por usuário
 - Intervalo mínimo de 2 segundos entre mensagens
+- Não processa mensagens de mídia (áudio, imagem ou vídeo), solicitando ao usuário que envie mensagens de texto
 
 ## Suporte
 
