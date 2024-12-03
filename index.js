@@ -37,8 +37,10 @@ const userNames = new Map();
 // Map para armazenar histórico de conversas por usuário
 const conversationHistory = new Map();
 
-// Mensagem que ativa o cooldown
-const cooldownTriggerMessage = process.env.COOLDOWN_TRIGGER_MESSAGE || "Vou repassar para o doutor Vinícius";
+// Mensagens que ativam o cooldown
+const cooldownTriggerMessages = process.env.COOLDOWN_TRIGGER_MESSAGES 
+    ? JSON.parse(process.env.COOLDOWN_TRIGGER_MESSAGES)
+    : ["Vou repassar para o doutor Vinícius"];
 
 // Map para armazenar tempos de cooldown por usuário
 const userCooldowns = new Map();
@@ -49,7 +51,12 @@ const MIN_TIME_BETWEEN_MESSAGES = 2000; // 2 segundos
 
 // Função para verificar e definir cooldown
 function handleCooldown(response, userId) {
-    if (response.includes(cooldownTriggerMessage)) {
+    // Verifica se a resposta contém alguma das frases de cooldown
+    const shouldTriggerCooldown = cooldownTriggerMessages.some(message => 
+        response.includes(message)
+    );
+
+    if (shouldTriggerCooldown) {
         const cooldownTime = Date.now() + (60 * 60 * 1000); // 1 hora em milissegundos
         userCooldowns.set(userId, cooldownTime);
         return true;
@@ -111,6 +118,7 @@ async function generateResponse(message, userName, userId) {
             history: conversationHistory.get(userId),
             generationConfig: {
                 maxOutputTokens: 1000,
+                temperature: parseFloat(process.env.GEMINI_TEMPERATURE || "0.7"),
             },
         });
 

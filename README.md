@@ -10,6 +10,12 @@ Bot para WhatsApp que utiliza a API do Google Gemini para gerar respostas inteli
 - Personalização do comportamento do bot através de variáveis de ambiente
 - Histórico de conversas persistente por usuário
 - Gerenciamento automático de contexto das conversas
+- Sistema de cooldown automático após certas respostas
+- Controle de intervalo mínimo entre mensagens (anti-spam)
+- Registro automático de nomes de usuários
+- Limite de 20 mensagens no histórico por usuário para otimização
+- Tratamento de erros e mensagens de fallback
+- Suporte a múltiplos gatilhos de cooldown personalizáveis
 
 ## Pré-requisitos
 
@@ -37,12 +43,16 @@ npm install
 GEMINI_API_KEY=sua_chave_api_aqui
 SYSTEM_PROMPT="Defina aqui a personalidade do seu bot"
 ALLOWED_PHONE_NUMBERS=numero1@c.us,numero2@c.us
+GEMINI_TEMPERATURE=0.5     # Controla a criatividade das respostas (0.0 a 1.0)
+COOLDOWN_TRIGGER_MESSAGES=["mensagem1", "mensagem2"]  # Lista de mensagens que ativam o cooldown
 ```
 
 Observações sobre as variáveis de ambiente:
 - `GEMINI_API_KEY`: Sua chave de API do Google Gemini
 - `SYSTEM_PROMPT`: Define a personalidade e comportamento do bot
 - `ALLOWED_PHONE_NUMBERS`: Lista de números permitidos separados por vírgula (formato: DDDDnumero@c.us)
+- `GEMINI_TEMPERATURE`: Quanto maior o valor, mais criativas e variadas serão as respostas
+- `COOLDOWN_TRIGGER_MESSAGES`: Array de mensagens que, quando enviadas pelo bot, ativam um período de cooldown de 1 hora para o usuário
 
 ## Como Usar
 
@@ -77,6 +87,9 @@ node index.js
 - O bot precisa de uma conexão estável com a internet
 - O WhatsApp Web precisa estar conectado
 - Há um limite de tempo entre mensagens para evitar spam
+- Período de cooldown de 1 hora após certas respostas específicas
+- Limite de 20 mensagens no histórico por usuário
+- Intervalo mínimo de 2 segundos entre mensagens
 
 ## Suporte
 
