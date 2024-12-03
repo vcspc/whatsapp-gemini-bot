@@ -23,13 +23,19 @@ const client = new Client({
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // - process.env.GEMINI_API_KEY: variável de ambiente com a chave API do Gemini
 
-// Array de números de telefone permitidos
-const allowedPhoneNumbers = process.env.ALLOWED_PHONE_NUMBERS 
-    ? process.env.ALLOWED_PHONE_NUMBERS.split(',')
-    : [];
+// Configuração dos números de telefone permitidos/bloqueados
+const PHONE_FILTER_MODE = process.env.PHONE_FILTER_MODE || 'allowed';
+const ALLOWED_PHONE_NUMBERS = (process.env.ALLOWED_PHONE_NUMBERS || '').split(',').filter(Boolean);
+const BLOCKED_PHONE_NUMBERS = (process.env.BLOCKED_PHONE_NUMBERS || '').split(',').filter(Boolean);
 
-// System prompt para definir o comportamento do bot
-const systemPrompt = process.env.SYSTEM_PROMPT;
+// Função para verificar se o número está permitido
+function isPhoneNumberAllowed(phoneNumber) {
+    if (PHONE_FILTER_MODE === 'allowed') {
+        return ALLOWED_PHONE_NUMBERS.length === 0 || ALLOWED_PHONE_NUMBERS.includes(phoneNumber);
+    } else {
+        return !BLOCKED_PHONE_NUMBERS.includes(phoneNumber);
+    }
+}
 
 // Map para armazenar nomes dos usuários
 const userNames = new Map();
@@ -124,7 +130,7 @@ async function generateResponse(message, userName, userId) {
 
         // Adiciona o system prompt apenas se for a primeira mensagem
         if (conversationHistory.get(userId).length <= 3) {
-            await chat.sendMessage(systemPrompt);
+            await chat.sendMessage(process.env.SYSTEM_PROMPT);
             const initialResponse = await chat.getHistory();
             conversationHistory.set(userId, initialResponse);
         }
@@ -173,9 +179,9 @@ client.on('message', async (message) => {
         // Verifica se a mensagem é de um chat individual
         console.log('Mensagem recebida de:', message.from);
         
-        // Ignora qualquer chat que não seja individual ou não esteja na lista de permitidos
-        if (chat.id.server !== 'c.us' || !allowedPhoneNumbers.includes(message.from)) {
-            console.log('Mensagem ignorada: não é um chat individual permitido');
+        // Ignora qualquer chat que não seja individual ou não esteja permitido pelo filtro
+        if (chat.id.server !== 'c.us' || !isPhoneNumberAllowed(message.from)) {
+            console.log('Mensagem ignorada: não é um chat individual permitido ou número está bloqueado/não permitido');
             return;
         }
 

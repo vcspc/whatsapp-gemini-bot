@@ -6,8 +6,9 @@ Bot para WhatsApp que utiliza a API do Google Gemini para gerar respostas inteli
 
 - Integração com WhatsApp Web
 - Respostas geradas pela IA Gemini da Google
-- Controle de acesso por números de telefone permitidos
+- Sistema flexível de filtragem de números (modo permitido ou bloqueado)
 - Personalização do comportamento do bot através de variáveis de ambiente
+- Controle de acesso por números de telefone permitidos
 - Histórico de conversas persistente por usuário
 - Gerenciamento automático de contexto das conversas
 - Sistema de cooldown automático após certas respostas
@@ -42,15 +43,23 @@ npm install
 ```env
 GEMINI_API_KEY=sua_chave_api_aqui
 SYSTEM_PROMPT="Defina aqui a personalidade do seu bot"
-ALLOWED_PHONE_NUMBERS=numero1@c.us,numero2@c.us
 GEMINI_TEMPERATURE=0.5     # Controla a criatividade das respostas (0.0 a 1.0)
 COOLDOWN_TRIGGER_MESSAGES=["mensagem1", "mensagem2"]  # Lista de mensagens que ativam o cooldown
+
+# Configuração de filtragem de números
+PHONE_FILTER_MODE=allowed  # Opções: allowed (permitido) ou blocked (bloqueado)
+ALLOWED_PHONE_NUMBERS=numero1@c.us,numero2@c.us  # Lista de números permitidos
+BLOCKED_PHONE_NUMBERS=numero3@c.us,numero4@c.us  # Lista de números bloqueados
 ```
 
 Observações sobre as variáveis de ambiente:
 - `GEMINI_API_KEY`: Sua chave de API do Google Gemini
+- `PHONE_FILTER_MODE`: Define o modo de filtragem de números
+  - `allowed`: Apenas números na lista ALLOWED_PHONE_NUMBERS podem usar o bot
+  - `blocked`: Todos os números podem usar o bot, exceto os da lista BLOCKED_PHONE_NUMBERS
+- `ALLOWED_PHONE_NUMBERS`: Lista de números permitidos (quando PHONE_FILTER_MODE=allowed)
+- `BLOCKED_PHONE_NUMBERS`: Lista de números bloqueados (quando PHONE_FILTER_MODE=blocked)
 - `SYSTEM_PROMPT`: Define a personalidade e comportamento do bot
-- `ALLOWED_PHONE_NUMBERS`: Lista de números permitidos separados por vírgula (formato: DDDDnumero@c.us)
 - `GEMINI_TEMPERATURE`: Quanto maior o valor, mais criativas e variadas serão as respostas
 - `COOLDOWN_TRIGGER_MESSAGES`: Array de mensagens que, quando enviadas pelo bot, ativam um período de cooldown de 1 hora para o usuário
 
@@ -78,7 +87,7 @@ node index.js
 
 ## Segurança
 
-- O bot só responderá a mensagens de números listados em `ALLOWED_PHONE_NUMBERS`
+- O bot só responderá a mensagens de números listados em `ALLOWED_PHONE_NUMBERS` (quando PHONE_FILTER_MODE=allowed) ou todos os números exceto os da lista `BLOCKED_PHONE_NUMBERS` (quando PHONE_FILTER_MODE=blocked)
 - As credenciais são armazenadas localmente de forma segura
 - O arquivo `.env` não é versionado no git para proteger informações sensíveis
 
