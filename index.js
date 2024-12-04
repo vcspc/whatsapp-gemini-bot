@@ -95,22 +95,118 @@ client.on('ready', () => {
     console.log('Cliente WhatsApp está pronto!');
 });
 
-// Função para gerar resposta usando Gemini
-async function generateResponse(message, userName, userId) {
+// Função para interpretar mídia usando Gemini
+async function interpretMedia(mediaData, messageText = '') {
+    console.log('\n=== Iniciando Interpretação de Mídia ===');
+    console.log(`Tipo de mídia: ${mediaData.type}`);
+    console.log(`Mensagem de texto anexada: ${messageText || 'Nenhuma'}`);
+    
     try {
-        // Cria um modelo do Gemini AI
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        
+        let prompt = '';
+        switch (mediaData.type) {
+            case 'image':
+                prompt = 'Descreva detalhadamente esta imagem e seu contexto. ';
+                break;
+            case 'video':
+                prompt = 'Analise este vídeo e descreva seu conteúdo. ';
+                break;
+            case 'audio':
+            case 'ptt':
+                prompt = 'Transcreva e interprete o conteúdo deste áudio. ';
+                break;
+        }
+
+        prompt += messageText ? `Considere também esta mensagem do usuário: ${messageText}` : '';
+        console.log('Prompt para interpretação:', prompt);
+
+        const result = await model.generateContent([
+            { text: prompt },
+            {
+                inlineData: {
+                    mimeType: mediaData.mimetype,
+                    data: mediaData.data
+                }
+            }
+        ]);
+
+        const response = await result.response;
+        const interpretedText = response.text();
+        console.log('Interpretação concluída:', interpretedText.substring(0, 100) + '...');
+        console.log('=== Fim da Interpretação de Mídia ===\n');
+        
+        return interpretedText;
+    } catch (error) {
+        console.error('Erro ao interpretar mídia:', error);
+        return 'Não foi possível interpretar a mídia enviada.';
+    }
+}
+
+// Função para processar mensagem com base no tipo
+async function processMessageByType(message, userName, userId) {
+    console.log('\n=== Iniciando Processamento de Mensagem ===');
+    console.log(`Tipo de mensagem: ${message.type}`);
+    console.log(`Usuário: ${userName} (ID: ${userId})`);
+    
+    try {
+        let messageText = message.body;
+        let mediaData = null;
+
+        // Verifica se tem mídia
+        if (message.hasMedia) {
+            console.log('Mídia detectada, iniciando download...');
+            const media = await message.downloadMedia();
+            if (media) {
+                console.log('Download de mídia concluído');
+                mediaData = {
+                    type: message.type,
+                    mimetype: media.mimetype,
+                    data: media.data
+                };
+
+                console.log('Iniciando interpretação da mídia...');
+                const mediaInterpretation = await interpretMedia(mediaData, messageText);
+                
+                console.log('Combinando interpretação com mensagem original...');
+                messageText = `[Interpretação da ${mediaData.type}]: ${mediaInterpretation}\n\nMensagem do usuário: ${messageText}`;
+            }
+        } else {
+            console.log('Mensagem sem mídia, processando apenas texto');
+        }
+
+        console.log('Gerando resposta com contexto completo...');
+        const response = await generateResponse(messageText, userName, userId);
+        
+        console.log('=== Fim do Processamento de Mensagem ===\n');
+        return response;
+
+    } catch (error) {
+        console.error('Erro ao processar mensagem:', error);
+        return 'Desculpe, ocorreu um erro ao processar sua mensagem.';
+    }
+}
+
+// Função para gerar resposta usando Gemini (modificada)
+async function generateResponse(message, userName, userId) {
+    console.log('\n=== Iniciando Geração de Resposta ===');
+    console.log(`Gerando resposta para: ${userName}`);
+    console.log(`Mensagem recebida: ${message.substring(0, 100)}...`);
+    
+    try {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         // Obtém ou inicializa o histórico do usuário
         if (!conversationHistory.has(userId)) {
+            console.log('Inicializando novo histórico de conversa');
             conversationHistory.set(userId, [
                 {
                     role: "user",
-                    parts: "Por favor, confirme que entendeu suas instruções respondendo apenas 'Entendido'.",
+                    parts: process.env.SYSTEM_PROMPT,
                 },
                 {
                     role: "model",
-                    parts: "Entendido",
+                    parts: "*assistente virtual:* Entendi perfeitamente minhas instruções.",
                 },
                 {
                     role: "user",
@@ -119,7 +215,7 @@ async function generateResponse(message, userName, userId) {
             ]);
         }
 
-        // Cria o chat com o histórico existente
+        console.log('Iniciando chat com histórico...');
         const chat = model.startChat({
             history: conversationHistory.get(userId),
             generationConfig: {
@@ -128,86 +224,62 @@ async function generateResponse(message, userName, userId) {
             },
         });
 
-        // Adiciona o system prompt apenas se for a primeira mensagem
-        if (conversationHistory.get(userId).length <= 3) {
-            await chat.sendMessage(process.env.SYSTEM_PROMPT);
-            const initialResponse = await chat.getHistory();
-            conversationHistory.set(userId, initialResponse);
-        }
-
-        // Gera uma resposta baseada na mensagem recebida
+        console.log('Enviando mensagem para o Gemini...');
         const result = await chat.sendMessage(message);
         const response = await result.response;
-        
-        // Atualiza o histórico com a nova interação
+        const responseText = response.text();
+        console.log('Resposta gerada:', responseText.substring(0, 100) + '...');
+
+        console.log('Atualizando histórico de conversa...');
         const updatedHistory = await chat.getHistory();
         conversationHistory.set(userId, updatedHistory);
-        
-        // Limita o histórico para evitar tokens excessivos (mantém últimas 10 mensagens)
-        if (updatedHistory.length > 20) {
+
+        // Limita o tamanho do histórico
+        if (conversationHistory.get(userId).length > 20) {
+            console.log('Limitando tamanho do histórico...');
             const trimmedHistory = [
-                ...updatedHistory.slice(0, 3), // Mantém as 3 primeiras mensagens (setup inicial)
-                ...updatedHistory.slice(-17) // Mantém as últimas 17 mensagens
+                ...conversationHistory.get(userId).slice(0, 3),
+                ...conversationHistory.get(userId).slice(-17)
             ];
             conversationHistory.set(userId, trimmedHistory);
         }
-        
-        // Retorna a resposta
-        return response.text();
+
+        console.log('=== Fim da Geração de Resposta ===\n');
+        return responseText;
+
     } catch (error) {
-        // Caso ocorra um erro, retorna uma mensagem de erro
         console.error('Erro ao gerar resposta:', error);
-        if (error.message.includes('429') || error.message.includes('quota')) {
-            return "Desculpe, o limite de mensagens foi atingido. Por favor, tente novamente mais tarde.";
-        }
         return "Desculpe, não consegui processar sua mensagem no momento.";
     }
 }
 
-// Evento para processar mensagens recebidas
+// Evento de mensagem
 client.on('message', async (message) => {
+    console.log('\n=== Nova Mensagem Recebida ===');
+    console.log(`De: ${message.from}`);
+    console.log(`Tipo: ${message.type}`);
+    console.log(`Conteúdo: ${message.body}`);
+    
     try {
-        // Get chat information
         const chat = await message.getChat();
-
         
-        
-        // Registra mensagem recebida e detalhes do chat
-        // console.log('\n=== Message and Chat Details ===');
-        // console.log('Chat Object:', JSON.stringify(chat, null, 2));
-        // console.log('Message Object:', JSON.stringify(message, null, 2));
-        // console.log('================================\n');
-
-        // Verifica se a mensagem é de um chat individual
-        console.log('Mensagem recebida de:', message.from);
-        
-        // Ignora qualquer chat que não seja individual ou não esteja permitido pelo filtro
         if (chat.id.server !== 'c.us' || !isPhoneNumberAllowed(message.from)) {
-            console.log('Mensagem ignorada: não é um chat individual permitido ou número está bloqueado/não permitido');
+            console.log('Mensagem ignorada: chat não individual ou número não permitido');
             return;
         }
 
-        // Verifica se o usuário está em cooldown
         if (isUserInCooldown(message.from)) {
-            console.log('Usuário em cooldown, ignorando mensagem');
+            console.log('Usuário em cooldown, mensagem ignorada');
             return;
         }
 
-        // Verifica o intervalo entre mensagens
         const now = Date.now();
         if (now - lastMessageTime < MIN_TIME_BETWEEN_MESSAGES) {
-            console.log('Aguardando intervalo entre mensagens...');
+            console.log(`Aguardando ${MIN_TIME_BETWEEN_MESSAGES}ms entre mensagens...`);
             await new Promise(resolve => setTimeout(resolve, MIN_TIME_BETWEEN_MESSAGES));
         }
         lastMessageTime = now;
 
-        // Verifica se a mensagem é de audio, imagem, or video
-        if (message.type === 'audio' || message.type === 'image' || message.type === 'video' || message.type === 'ptt') {
-            await message.reply("Não consigo, neste momento, ouvir ou ver o arquivo. Poderia me enviar uma mensagem de texto, por gentileza!");
-            return;
-        }
-
-        // Captura o nome do usuário se for a primeira mensagem
         if (!userNames.has(message.from)) {
             const contact = await message.getContact();
             const userName = contact.pushname || 'Usuário';
@@ -215,21 +287,22 @@ client.on('message', async (message) => {
             console.log(`Novo usuário registrado: ${userName}`);
         }
 
-        console.log(`Mensagem recebida de chat individual permitido: ${message.body}`);
-        
-        // Gera resposta usando Gemini
         const userName = userNames.get(message.from);
-        const response = await generateResponse(message.body, userName, message.from);
+        console.log('Processando mensagem...');
+        const response = await processMessageByType(message, userName, message.from);
         
-        // Verifica se a resposta deve ativar o cooldown
+        console.log('Verificando cooldown...');
         const shouldCooldown = handleCooldown(response, message.from);
         
-        // Envia a resposta usando sendMessage ao invés de reply
+        console.log('Enviando resposta...');
         await client.sendMessage(message.from, response);
         
         if (shouldCooldown) {
             console.log(`Cooldown ativado para usuário ${message.from}`);
         }
+
+        console.log('=== Processamento de Mensagem Concluído ===\n');
+
     } catch (error) {
         console.error('Erro ao processar mensagem:', error);
         await client.sendMessage(message.from, 'Desculpe, ocorreu um erro ao processar sua mensagem.');

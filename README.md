@@ -17,13 +17,20 @@ Bot para WhatsApp que utiliza a API do Google Gemini para gerar respostas inteli
 - Limite de 20 mensagens no histórico por usuário para otimização
 - Tratamento de erros e mensagens de fallback
 - Suporte a múltiplos gatilhos de cooldown personalizáveis
-- Tratamento automático de mensagens de mídia (áudio, imagem e vídeo)
+- Processamento avançado de mídia:
+  - Interpretação de imagens usando visão computacional
+  - Transcrição e interpretação de áudios
+  - Análise de conteúdo de vídeos
+  - Integração da interpretação de mídia com o contexto da conversa
+- Logs detalhados de todas as operações para monitoramento
+- Sistema de normalização de histórico de conversas
+- Tratamento automático de diferentes tipos de mídia com prompts específicos
 
 ## Pré-requisitos
 
 - Node.js (versão 14 ou superior)
 - NPM (Node Package Manager)
-- Uma chave de API do Google Gemini
+- Uma chave de API do Google Gemini (com suporte a recursos multimodais)
 
 ## Instalação
 
@@ -79,18 +86,44 @@ node index.js
 3. Após a autenticação, o bot estará ativo e:
    - Manterá o contexto das conversas anteriores
    - Responderá de forma personalizada usando o nome do usuário
-   - Processará as mensagens de forma inteligente usando IA
+   - Processará mensagens de texto e mídia de forma inteligente usando IA
+   - Manterá logs detalhados de todas as operações
 
-4. O bot mantém um histórico das últimas 20 interações por usuário para:
-   - Manter contexto relevante da conversa
-   - Personalizar respostas com base no histórico
-   - Otimizar o uso de tokens da API
+4. O bot suporta diferentes tipos de mídia:
+   - Imagens: analisa e descreve o conteúdo visual
+   - Áudios: transcreve e interpreta o conteúdo
+   - Vídeos: analisa e descreve o conteúdo
+   - Combina interpretação de mídia com mensagens de texto
 
-## Segurança
+5. Sistema de Logs:
+   - Registra cada etapa do processamento de mensagens
+   - Mostra informações detalhadas sobre interpretação de mídia
+   - Facilita o diagnóstico de problemas
+   - Monitora o fluxo completo das conversas
 
-- O bot só responderá a mensagens de números listados em `ALLOWED_PHONE_NUMBERS` (quando PHONE_FILTER_MODE=allowed) ou todos os números exceto os da lista `BLOCKED_PHONE_NUMBERS` (quando PHONE_FILTER_MODE=blocked)
-- As credenciais são armazenadas localmente de forma segura
-- O arquivo `.env` não é versionado no git para proteger informações sensíveis
+## Processamento de Mídia
+
+O bot agora possui capacidade completa de processamento de mídia:
+
+1. Imagens:
+   - Análise visual detalhada
+   - Descrição do contexto e elementos
+   - Integração com mensagens de texto
+
+2. Áudios:
+   - Transcrição do conteúdo
+   - Interpretação do contexto
+   - Suporte a mensagens de voz (PTT)
+
+3. Vídeos:
+   - Análise do conteúdo visual
+   - Descrição das cenas
+   - Contextualização com a conversa
+
+4. Processamento Integrado:
+   - Combina interpretação de mídia com histórico da conversa
+   - Mantém contexto consistente
+   - Respostas personalizadas baseadas em múltiplos inputs
 
 ## Limitações
 
@@ -100,7 +133,8 @@ node index.js
 - Período de cooldown de 1 hora após certas respostas específicas
 - Limite de 20 mensagens no histórico por usuário
 - Intervalo mínimo de 2 segundos entre mensagens
-- Não processa mensagens de mídia (áudio, imagem ou vídeo), solicitando ao usuário que envie mensagens de texto
+- O processamento de mídia pode levar mais tempo que mensagens de texto
+- Alguns tipos de mídia podem ter limitações de tamanho ou formato
 
 ## Suporte
 
