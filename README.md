@@ -25,6 +25,22 @@ Bot para WhatsApp que utiliza a API do Google Gemini para gerar respostas inteli
 - Logs detalhados de todas as operações para monitoramento
 - Sistema de normalização de histórico de conversas
 - Tratamento automático de diferentes tipos de mídia com prompts específicos
+- Validação inteligente de mensagens usando IA
+  - Verifica se as mensagens estão alinhadas com o objetivo do bot
+  - Filtra mensagens inadequadas automaticamente
+  - Análise das últimas 3 mensagens do contexto
+- Sistema de processamento de mídia aprimorado
+  - Prompts específicos para cada tipo de mídia
+  - Integração automática de texto e mídia
+  - Interpretação contextual de imagens, vídeos e áudios
+- Gerenciamento avançado de histórico
+  - Preservação do contexto inicial do sistema
+  - Manutenção dos primeiros 3 mensagens importantes
+  - Rotação automática mantendo as últimas 17 mensagens
+- Sistema de logging detalhado
+  - Registro de todas as operações do bot
+  - Monitoramento de processamento de mídia
+  - Acompanhamento de validações de mensagens
 
 ## Pré-requisitos
 
@@ -139,3 +155,21 @@ O bot agora possui capacidade completa de processamento de mídia:
 ## Suporte
 
 Se encontrar algum problema ou tiver sugestões, por favor, abra uma issue no repositório.
+
+## Detalhes Técnicos
+
+### Sistema de Validação de Mensagens
+O bot utiliza um sistema de validação em duas camadas:
+1. Validação de contexto: verifica se as mensagens estão alinhadas com o objetivo do bot
+2. Análise de conteúdo: processa até 3 mensagens recentes para manter a consistência
+
+### Processamento de Mídia Detalhado
+- **Imagens**: "Descreva detalhadamente esta imagem e seu contexto"
+- **Vídeos**: "Analise este vídeo e descreva seu conteúdo"
+- **Áudios/PTT**: "Transcreva e interprete o conteúdo deste áudio"
+
+### Gerenciamento de Histórico
+O bot mantém um histórico otimizado por usuário:
+- Preserva as 3 primeiras mensagens (contexto do sistema)
+- Mantém as últimas 17 mensagens da conversa
+- Remove automaticamente mensagens antigas quando excede 20 mensagens

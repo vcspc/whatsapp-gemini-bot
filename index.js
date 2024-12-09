@@ -57,13 +57,17 @@ const MIN_TIME_BETWEEN_MESSAGES = 2000; // 2 segundos
 
 // Função para verificar e definir cooldown
 function handleCooldown(response, userId) {
-    // Verifica se a resposta contém alguma das frases de cooldown
+    // Verifica se response existe e é uma string
+    if (!response || typeof response !== 'string') {
+        return false;
+    }
+
     const shouldTriggerCooldown = cooldownTriggerMessages.some(message => 
         response.includes(message)
     );
 
     if (shouldTriggerCooldown) {
-        const cooldownTime = Date.now() + (60 * 60 * 1000); // 1 hora em milissegundos
+        const cooldownTime = Date.now() + (60 * 60 * 1000);
         userCooldowns.set(userId, cooldownTime);
         return true;
     }
@@ -143,6 +147,38 @@ async function interpretMedia(mediaData, messageText = '') {
     }
 }
 
+async function validateUserMessages(messages, systemPrompt) {
+    console.log('\n=== Iniciando Validação de Mensagens ===');
+    
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+
+        for (let i = 0; i < Math.min(3, messages.length); i++) {
+            const message = messages[i];
+            console.log(`Analisando mensagem: ${message}`);
+
+            const prompt = `Verifique se a seguinte mensagem está alinhada com o objetivo do chatbot: "${systemPrompt}". Mensagem: "${message}". Se não está alinhada, responda com "não". Se está alinhada, responda com "sim".`;
+            const result = await model.generateContent([{ text: prompt }]);
+            const response = await result.response;
+            const analysis = response.text();
+
+            console.log(`Análise da mensagem: ${analysis}`);
+
+            if (!analysis.includes("sim")) {
+                console.log('Mensagem não está alinhada');
+                return false;
+            }
+        }
+
+        console.log('Todas as mensagens estão alinhadas.');
+        return true;
+
+    } catch (error) {
+        console.error('Erro ao validar mensagens:', error);
+        return false;
+    }
+}
+
 // Função para processar mensagem com base no tipo
 async function processMessageByType(message, userName, userId) {
     console.log('\n=== Iniciando Processamento de Mensagem ===');
@@ -173,6 +209,13 @@ async function processMessageByType(message, userName, userId) {
             }
         } else {
             console.log('Mensagem sem mídia, processando apenas texto');
+        }
+
+        // Validação das mensagens do usuário
+        const isMessageValid = await validateUserMessages([messageText], process.env.SYSTEM_PROMPT);
+        if (!isMessageValid) {
+            console.log('Mensagem não válida, ignorando...');
+            return null;
         }
 
         console.log('Gerando resposta com contexto completo...');
@@ -291,14 +334,19 @@ client.on('message', async (message) => {
         console.log('Processando mensagem...');
         const response = await processMessageByType(message, userName, message.from);
         
-        console.log('Verificando cooldown...');
-        const shouldCooldown = handleCooldown(response, message.from);
-        
-        console.log('Enviando resposta...');
-        await client.sendMessage(message.from, response);
-        
-        if (shouldCooldown) {
-            console.log(`Cooldown ativado para usuário ${message.from}`);
+        // Só envia resposta se ela não for null
+        if (response) {
+            console.log('Verificando cooldown...');
+            const shouldCooldown = handleCooldown(response, message.from);
+            
+            console.log('Enviando resposta...');
+            await client.sendMessage(message.from, response);
+            
+            if (shouldCooldown) {
+                console.log(`Cooldown ativado para usuário ${message.from}`);
+            }
+        } else {
+            console.log('Mensagem ignorada: validação falhou');
         }
 
         console.log('=== Processamento de Mensagem Concluído ===\n');
