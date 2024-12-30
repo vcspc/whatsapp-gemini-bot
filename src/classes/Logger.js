@@ -16,7 +16,6 @@ class Logger {
 
     formatLogMessage(type, userName, userId, message) {
         const date = new Date();
-        date.setHours(date.getHours() - 3);
         
         const timestamp = date.toLocaleString('pt-BR', { 
             timeZone: 'America/Sao_Paulo',
@@ -72,4 +71,4 @@ class Logger {
     }
 }
 
-module.exports = Logger; 
+module.exports = Logger;

@@ -44,9 +44,10 @@ class UserManager {
     setCooldown(userId, response, cooldownTriggerMessages) {
         if (!response || typeof response !== 'string') return false;
 
-        const shouldTriggerCooldown = cooldownTriggerMessages.some(message => 
-            response.includes(message)
-        );
+        const shouldTriggerCooldown = cooldownTriggerMessages.some(message => {
+            const regex = new RegExp(`\\b${message}\\b`, 'i');
+            return regex.test(response);
+        });
 
         if (shouldTriggerCooldown) {
             const cooldownTime = Date.now() + (60 * 60 * 1000); // 1 hora
@@ -77,4 +78,4 @@ class UserManager {
     }
 }
 
-module.exports = UserManager; 
+module.exports = UserManager;

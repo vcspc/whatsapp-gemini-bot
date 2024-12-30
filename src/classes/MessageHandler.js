@@ -103,8 +103,8 @@ class MessageHandler {
             this.userManager.addToConversationHistory(userId, response, 'assistant');
 
             // Verifica se deve ativar cooldown
-            const cooldownActivated = this.userManager.setCooldown(userId, response, this.config.COOLDOWN_TRIGGER_MESSAGES);
-            if (cooldownActivated) {
+            const cooldownActivated = this.userManager.setCooldown(userId, messageText, this.config.COOLDOWN_TRIGGER_MESSAGES);
+             if (cooldownActivated) {
                 await this.logger.logCooldown(userName, userId, 'Cooldown ativado');
             }
 
@@ -122,4 +122,4 @@ class MessageHandler {
     }
 }
 
-module.exports = MessageHandler; 
+module.exports = MessageHandler;
