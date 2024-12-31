@@ -12,7 +12,11 @@ class GeminiAI {
                 model: "gemini-1.5-flash",
                 generationConfig: {
                     temperature: this.temperature,
-                }
+                },
+                tools: [{
+                    name: 'get_current_time',
+                    description: 'Retorna a hora atual no formato HH:MM',
+                }]
             });
 
             const initialHistory = [{
@@ -120,6 +124,13 @@ class GeminiAI {
             throw error;
         }
     }
+
+    getCurrentTime() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    }
 }
 
-module.exports = GeminiAI; 
+module.exports = GeminiAI;

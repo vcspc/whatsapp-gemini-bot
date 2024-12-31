@@ -67,6 +67,7 @@ class MessageHandler {
                     };
 
                     const mediaInterpretation = await this.geminiAI.interpretMedia(mediaData, messageText);
+                    await this.logger.logProcessingStep(userName, userId, 'MÍDIA', `Interpretação da ${mediaData.type}: ${mediaInterpretation}`);
                     messageText = `[Interpretação da ${mediaData.type}]: ${mediaInterpretation}\n\nMensagem do usuário: ${messageText}`;
                     await this.logger.logProcessingStep(userName, userId, 'MÍDIA', 'Mídia processada com sucesso');
                 }
@@ -92,11 +93,23 @@ class MessageHandler {
 
             // Gera resposta
             await this.logger.logProcessingStep(userName, userId, 'IA', 'Gerando resposta');
-            const response = await this.geminiAI.generateResponse(
-                messageText, 
-                conversationHistory,
-                this.config.SYSTEM_PROMPT
-            );
+            let response;
+            if (messageText.toLowerCase().includes('que horas são') || messageText.toLowerCase().includes('qual a hora')) {
+                await this.logger.logProcessingStep(userName, userId, 'FUNÇÃO', 'Chamando função getCurrentTime');
+                response = await this.geminiAI.generateResponse(
+                    'Qual a hora atual?',
+                    conversationHistory,
+                    this.config.SYSTEM_PROMPT
+                );
+                const currentTime = this.geminiAI.getCurrentTime();
+                response = `A hora atual é: ${currentTime}`;
+            } else {
+                response = await this.geminiAI.generateResponse(
+                    messageText,
+                    conversationHistory,
+                    this.config.SYSTEM_PROMPT
+                );
+            }
 
             // Atualiza histórico
             this.userManager.addToConversationHistory(userId, messageText, 'user');
