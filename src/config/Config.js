@@ -1,6 +1,7 @@
 class Config {
     constructor() {
         this.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        this.VALIDACAO_PROMPT = process.env.VALIDACAO_PROMPT;
         this.SYSTEM_PROMPT = process.env.SYSTEM_PROMPT;
         this.GEMINI_TEMPERATURE = parseFloat(process.env.GEMINI_TEMPERATURE) || 0.4;
         this.PHONE_FILTER_MODE = process.env.PHONE_FILTER_MODE || 'allowed';

@@ -12,6 +12,7 @@ class GeminiAI {
                 model: "gemini-1.5-flash",
                 generationConfig: {
                     temperature: this.temperature,
+                    topP: 0.5,
                 },
                 tools: [{
                     name: 'get_current_time',
@@ -43,7 +44,7 @@ class GeminiAI {
         }
     }
 
-    async validateUserMessages(messages, systemPrompt) {
+    async validateUserMessages(messages, validationPrompt) {
         const maxRetries = 3;
         const retryDelay = 1000; // 1 segundo
 
@@ -52,19 +53,22 @@ class GeminiAI {
                 const model = this.genAI.getGenerativeModel({ 
                     model: "gemini-1.5-flash-8b",
                     generationConfig: {
-                        temperature: 0.1
+                        temperature: 0.1,
+                        topK: 2,
                     }
                 });
 
                 for (let i = 0; i < Math.min(3, messages.length); i++) {
                     const message = messages[i];
-                    const prompt = `Verifique se a seguinte mensagem está alinhada com o objetivo do chatbot: "${systemPrompt}". Mensagem: "${message}". Se não está alinhada, responda com "não". Se está alinhada, responda com "sim".`;
+                    const prompt = `Você é um moderador de mensagens de whatsapp. Verifique se a mensagem está falando sobre esses assuntos: "${validationPrompt}". Mensagem: "${message}". Se estiver estiver, responda com "sim". Se não estiver, responda com "não".`;
                     
                     const result = await model.generateContent(prompt);
                     const response = await result.response;
                     const analysis = response.text();
+                    console.log(analysis);
 
-                    if (!analysis.toLowerCase().includes("sim")) {
+                    if (!analysis.toLowerCase().includes("não")) {
+                        console.log(analysis);
                         return false;
                     }
                 }

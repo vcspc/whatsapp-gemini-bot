@@ -77,7 +77,7 @@ class MessageHandler {
             await this.logger.logProcessingStep(userName, userId, 'VALIDAÇÃO', 'Iniciando validação da mensagem');
             const isMessageValid = await this.geminiAI.validateUserMessages(
                 [messageText],
-                this.config.SYSTEM_PROMPT
+                this.config.VALIDACAO_PROMPT
             );
             await this.logger.logMessageValidation(userName, userId, isMessageValid);
 
